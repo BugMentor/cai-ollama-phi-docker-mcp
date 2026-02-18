@@ -1,0 +1,23 @@
+{
+  "servers": [
+    {
+      "server_id": "cai-ollama-phi",
+      "type": "docker",
+      "description": "CAI Agent with Ollama (phi model) running in a Docker container",
+      "image": "cai-agent:latest",
+      "command": "cai",
+      "ports": {
+        "11434": "11434"
+      },
+      "env": {
+        "OPENAI_API_KEY": "sk-1234",
+        "ANTHROPIC_API_KEY": "",
+        "OLLAMA": "phi",
+        "CAI_MODEL": "ollama/phi",
+        "OLLAMA_API_BASE": "http://localhost:11434",
+        "PROMPT_TOOLKIT_NO_CPR": "1",
+        "CAI_STREAM": "false"
+      }
+    }
+  ]
+}
