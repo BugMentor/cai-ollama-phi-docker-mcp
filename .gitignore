@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+cai_env/
+.pytest_cache/
+
+# Docker
+.dockerignore
+
+# IDEs
+.vscode/
+.idea/
+
+# Reports and results
+analysis_result.md
+security_report.html
+latest_cai_report.html
+*.log
+
+# Windows
+Thumbs.db
+desktop.ini

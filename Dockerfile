@@ -5,20 +5,20 @@ FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Update package list and install necessary dependencies
-RUN apt-get update && 
-    apt-get install -y 
-    python3 
-    python3-pip 
-    python3-venv 
-    curl 
-    zstd 
-    git 
-    --no-install-recommends && 
+RUN apt-get update && \
+    apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    curl \
+    zstd \
+    git \
+    --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for security best practices
-ARG UID=1000
-ARG GID=1000
+ARG UID=1001
+ARG GID=1001
 RUN groupadd -g $GID caiuser && useradd -m -u $UID -g $GID -s /bin/bash caiuser
 USER caiuser
 WORKDIR /home/caiuser
@@ -26,9 +26,11 @@ WORKDIR /home/caiuser
 # Create and activate Python virtual environment
 RUN python3 -m venv cai_env
 ENV PATH="/home/caiuser/cai_env/bin:$PATH"
+# Mark that we are inside the CAI container so tests can enforce stricter checks here
+ENV CAI_CONTAINER=1
 
-# Install cai-framework
-RUN pip install cai-framework
+# Install cai-framework, requests, pytest, and fastmcp for MCP server
+RUN pip install cai-framework requests pytest fastmcp
 
 # Install Ollama
 # The Ollama install script will set up the 'ollama' user and service within the container.
@@ -38,30 +40,37 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 USER caiuser
 
 # Create .env file for CAI configuration
-RUN echo 'OPENAI_API_KEY="sk-1234"' > .env && 
-    echo 'ANTHROPIC_API_KEY=""' >> .env && 
-    echo 'OLLAMA="phi"' >> .env && 
-    echo 'CAI_MODEL="ollama/phi"' >> .env && 
-    echo 'OLLAMA_API_BASE="http://localhost:11434"' >> .env && 
-    echo 'PROMPT_TOOLKIT_NO_CPR=1' >> .env && 
+RUN echo 'OPENAI_API_KEY="sk-1234"' > .env && \
+    echo 'ANTHROPIC_API_KEY=""' >> .env && \
+    echo 'OLLAMA="phi"' >> .env && \
+    echo 'CAI_MODEL="ollama/phi"' >> .env && \
+    echo 'OLLAMA_API_BASE="http://localhost:11434"' >> .env && \
+    echo 'PROMPT_TOOLKIT_NO_CPR=1' >> .env && \
     echo 'CAI_STREAM=false' >> .env
 
-# Expose the Ollama port
-EXPOSE 11434
+# Expose Ollama and MCP HTTP ports
+EXPOSE 11434 8000
 
 # Ensure Ollama is served before attempting to pull models
 # This uses a trick: in a multi-stage build or similar, you'd start ollama serve
 # and then pull. For simplicity in a single-stage, we'll run ollama serve
 # in the background during the build, then kill it, ensuring the model is present.
 # For runtime, we'll start it again.
-RUN (ollama serve > /dev/null 2>&1 &) && 
-    sleep 5 && 
-    ollama pull phi && 
+RUN (ollama serve > /dev/null 2>&1 &) && \
+    sleep 5 && \
+    ollama pull phi && \
     kill $(jobs -p) || true # Kill background ollama serve and ignore errors if it already exited
 
 # Define the entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+USER root
 RUN chmod +x /usr/local/bin/entrypoint.sh
+USER caiuser
+
+# Copy tests (including health check), MCP config, and MCP server into the container
+COPY tests /home/caiuser/tests
+COPY mcp_config_cai.json /home/caiuser/mcp_config_cai.json
+COPY cai_mcp_server.py /home/caiuser/cai_mcp_server.py
 
 # Set the entrypoint to our script
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

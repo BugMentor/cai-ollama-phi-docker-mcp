@@ -1,169 +1,145 @@
-# CAI Agent Containerization and MCP Integration Setup
+# BugMentor CAI: Universal Security Intelligence & MCP Server
 
-This document outlines the steps and configurations for containerizing the CAI (Cybersecurity AI) agent with Ollama and the `phi` model, and integrating it as an MCP (Model Context Protocol) server. This approach provides enhanced portability, isolation, and streamlined management compared to a direct WSL installation.
+This is a powerful, open-source **BugMentor project** that containerizes the CAI (Cybersecurity AI) agent with Ollama and the `phi` model. It provides both a generic security scanner for any project and a fully-featured MCP (Model Context Protocol) server with automated intelligence reporting.
 
-## Files Created for Containerization
+- **Developer**: Matías J. Magni, CEO @ [BugMentor](https://bugmentor.com)
+- **License**: MIT
 
-### 1. `Dockerfile`
+---
 
-This file is used to build the Docker image for the CAI agent. It sets up the environment, installs dependencies, installs Ollama, and pre-pulls the `phi` model.
+## 🚀 Key Features
 
-**Location:** `C:\Users\matias.magni2\Dockerfile`
+### 1. Universal Security Scanner (`cai_security_scanner.py`)
+A cross-platform CLI tool that performs deep security audits on any directory.
+- **Recursive Scan**: Identifies sensitive files (.go, .py, .js, .env, etc.).
+- **AI-Powered**: Uses BugMentor AI (Phi-2) in Docker for high-fidelity auditing.
+- **Instant Reports**: Generates a premium, responsive HTML report and opens it automatically in your browser.
 
-```dockerfile
-# Use an official Ubuntu image as a base
-FROM ubuntu:latest
+### 2. Automated MCP Intelligence
+The MCP server automatically generates a professional HTML report after **every** interaction.
+- **`cai_text` Tool**: Integrates directly with Cursor, VS Code, or Gemini Desktop.
+- **Persistence**: Every response is archived as a styled HTML report inside the container.
 
-# Set environment variables for non-interactive apt-get installs
-ENV DEBIAN_FRONTEND=noninteractive
+---
 
-# Update package list and install necessary dependencies
-RUN apt-get update && 
-    apt-get install -y 
-    python3 
-    python3-pip 
-    python3-venv 
-    curl 
-    zstd 
-    git 
-    --no-install-recommends && 
-    rm -rf /var/lib/apt/lists/*
+## 🛠 Setup Instructions
 
-# Create a non-root user for security best practices
-ARG UID=1000
-ARG GID=1000
-RUN groupadd -g $GID caiuser && useradd -m -u $UID -g $GID -s /bin/bash caiuser
-USER caiuser
-WORKDIR /home/caiuser
-
-# Create and activate Python virtual environment
-RUN python3 -m venv cai_env
-ENV PATH="/home/caiuser/cai_env/bin:$PATH"
-
-# Install cai-framework
-RUN pip install cai-framework
-
-# Install Ollama
-# The Ollama install script will set up the 'ollama' user and service within the container.
-# This curl command must be run as root initially, then we'll manage the user later.
-USER root
-RUN curl -fsSL https://ollama.com/install.sh | sh
-USER caiuser
-
-# Create .env file for CAI configuration
-RUN echo 'OPENAI_API_KEY="sk-1234"' > .env && 
-    echo 'ANTHROPIC_API_KEY=""' >> .env && 
-    echo 'OLLAMA="phi"' >> .env && 
-    echo 'CAI_MODEL="ollama/phi"' >> .env && 
-    echo 'OLLAMA_API_BASE="http://localhost:11434"' >> .env && 
-    echo 'PROMPT_TOOLKIT_NO_CPR=1' >> .env && 
-    echo 'CAI_STREAM=false' >> .env
-
-# Expose the Ollama port
-EXPOSE 11434
-
-# Ensure Ollama is served before attempting to pull models
-# This uses a trick: in a multi-stage build or similar, you'd start ollama serve
-# and then pull. For simplicity in a single-stage, we'll run ollama serve
-# in the background during the build, then kill it, ensuring the model is present.
-# For runtime, we'll start it again.
-RUN (ollama serve > /dev/null 2>&1 &) && 
-    sleep 5 && 
-    ollama pull phi && 
-    kill $(jobs -p) || true # Kill background ollama serve and ignore errors if it already exited
-
-# Define the entrypoint script
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Set the entrypoint to our script
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-# Default command for the container
-CMD ["cai"]
-```
-
-### 2. `entrypoint.sh`
-
-This script is executed when the Docker container starts. It ensures the Ollama server is running in the background and activates the CAI virtual environment before executing the main command.
-
-**Location:** `C:\Users\matias.magni2\entrypoint.sh`
-
+### 1. Build the AI Engine
+Ensure Docker is running, then build the image:
 ```bash
-#!/bin/bash
-set -e
-
-echo "Starting Ollama server in background..."
-ollama serve &
-
-# Wait for Ollama server to start
-sleep 5
-
-echo "Activating CAI virtual environment..."
-source /home/caiuser/cai_env/bin/activate
-
-echo "Executing command: $@"
-exec "$@"
+docker build -t cai-agent:latest .
 ```
 
-### 3. `mcp_config_cai.json`
+### 2. Launch the MCP Server
+Launch the container and the MCP service:
 
-This JSON file provides a configuration entry for your MCP system, defining the containerized CAI agent as an MCP server.
+**Windows (PowerShell):**
+```powershell
+.\run_mcp_http.ps1
+```
 
-**Location:** `C:\Users\matias.magni2\mcp_config_cai.json`
+**Linux/macOS (Bash):**
+```bash
+chmod +x *.sh
+./run_mcp_http.sh
+```
 
+### 3. Configure Your IDE (MCP)
+Add the following to your MCP configuration (e.g., `mcp_config.json`):
 ```json
 {
-  "servers": [
-    {
-      "server_id": "cai-ollama-phi",
-      "type": "docker",
-      "description": "CAI Agent with Ollama (phi model) running in a Docker container",
-      "image": "cai-agent:latest",
-      "command": "cai",
-      "ports": {
-        "11434": "11434"
-      },
-      "env": {
-        "OPENAI_API_KEY": "sk-1234",
-        "ANTHROPIC_API_KEY": "",
-        "OLLAMA": "phi",
-        "CAI_MODEL": "ollama/phi",
-        "OLLAMA_API_BASE": "http://localhost:11434",
-        "PROMPT_TOOLKIT_NO_CPR": "1",
-        "CAI_STREAM": "false"
-      }
+  "mcpServers": {
+    "cai-ollama-phi": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "cai-agent-mcp-http",
+        "/home/caiuser/cai_env/bin/python",
+        "-u",
+        "/home/caiuser/cai_mcp_server.py"
+      ]
     }
-  ]
+  }
 }
 ```
 
-## Setup Instructions
+---
 
-Follow these steps to build the Docker image and integrate it with your MCP system:
+## 📖 Usage Guide
 
-1.  **Build the Docker Image:**
-    *   Open your **Windows Command Prompt or PowerShell**.
-    *   Navigate to the directory containing the `Dockerfile` and `entrypoint.sh` files:
-        ```bash
-        cd C:\Users\matias.magni2
-        ```
-    *   Execute the following command to build the Docker image. This process will take some time as it downloads the base image, installs dependencies, and pulls the `phi` model.
-        ```bash
-        docker build -t cai-agent:latest .
-        ```
-        The `-t cai-agent:latest` flag tags the image with the name `cai-agent` and version `latest`. The `.` indicates that the build context (where the Dockerfile and other necessary files are located) is the current directory.
+### 🔍 Running a Security Audit
+Scan any directory on your host:
+```bash
+# Windows
+python cai_security_scanner.py "C:\path\to\your\project"
 
-2.  **Integrate with your MCP System:**
-    *   You need to integrate the configuration from `mcp_config_cai.json` into your MCP system. The exact method depends on how your MCP framework manages its server configurations:
-        *   **If your MCP uses a central `mcp.json` file:** Copy the entire JSON object under the `"servers"` array from `mcp_config_cai.json` and paste it into the `"servers"` array of your main `mcp.json` file.
-        *   **If your MCP supports loading multiple configuration files:** Place `mcp_config_cai.json` in the appropriate directory where your MCP system scans for server configurations.
-        *   **If your MCP has an API or CLI for adding servers:** Use those methods to register the "cai-ollama-phi" server with the details provided in `mcp_config_cai.json`.
-
-3.  **Verify the Setup:**
-    Once the Docker image is built and the MCP configuration is integrated, your MCP system should be able to:
-    *   Start the `cai-agent:latest` Docker container.
-    *   The container's `entrypoint.sh` will automatically launch the Ollama server in the background and activate the CAI environment.
-    *   You can then invoke the CAI agent through your MCP framework by referencing its `server_id` (`cai-ollama-phi`) or its configured command within the MCP system. Consult your MCP documentation for the specific command or method to trigger registered servers/tools.
-
+# Linux/macOS
+python3 cai_security_scanner.py "/path/to/your/project"
 ```
+The script will audit the code and automatically open the **`security_report.html`** when finished.
+
+### 🧠 Using the MCP Agent
+In your IDE (Cursor/VS Code/Gemini Desktop), simply ask:
+> "Use cai_text to analyze the security of this feature..."
+
+### 📄 Viewing MCP Reports
+To see the beautifully formatted HTML report from your last MCP interaction:
+
+**Windows (PowerShell):**
+```powershell
+.\get_mcp_report.ps1
+```
+
+**Linux/macOS (Bash):**
+```bash
+./get_mcp_report.sh
+```
+
+---
+
+## 🧹 Project Structure
+- `cai_security_scanner.py`: Host-side CLI for directory auditing (Auto-Open feature).
+- `cai_scanner_core.py`: Container-side audit worker.
+- `cai_mcp_server.py`: MCP server with automated reporting logic.
+- `run_mcp_http.ps1/sh`: Container lifecycle management for Windows and Linux.
+- `get_mcp_report.ps1/sh`: Automation scripts for viewing reports.
+
+---
+
+## 💰 Funding & Support
+
+**BugMentor** is dedicated to building privacy-focused, vendor-lock-in-free alternatives for cybersecurity and agile tools.
+
+Building and maintaining enterprise-grade security tools takes significant resources. Your support directly funds server costs, development hours, and the maintenance of our open-source infrastructure.
+
+### 🏆 Become a Sponsor (Open Collective)
+This is the best way to support the project if you want public recognition on our README and website.
+
+[![Open Collective](https://img.shields.io/opencollective/all/bugmentor-arg?label=Support%20BugMentor&logo=opencollective&color=blue)](https://opencollective.com/bugmentor-arg)
+
+[**Click here to Donate via Open Collective**](https://opencollective.com/bugmentor-arg/donate)
+
+---
+
+### ⚡ Direct Support (Wise)
+If you prefer to support the lead developer directly with lower fees (or for one-off contributions), you can use the link below.
+
+[**Send a Direct Contribution via Wise**](https://wise.com/pay/me/matiasm155)
+
+---
+
+### 💼 Commercial Support & Training
+Need help implementing CAI or other BugMentor tools in your company? BugMentor offers:
+* **Enterprise Installation & Hosting Support**
+* **Cybersecurity & QA Training**
+* **Custom AI Feature Development**
+
+[Contact us](https://bugmentor.com) for commercial inquiries.
+
+---
+
+## 🤝 Contributing
+BugMentor welcomes community contributions. Fork this repository, open PRs, or file issues at [BugMentor](https://bugmentor.com).
+
+*Safe hunting!* 🛡️
