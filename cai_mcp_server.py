@@ -47,7 +47,10 @@ async def cai_text(prompt: str) -> str:
     """
     Ask the CAI agent a question and automatically generate a premium HTML report.
     """
-    from cai.sdk.agents import Agent, Runner, OpenAIChatCompletionsModel
+    try:
+        from cai.sdk.agents import Agent, Runner, OpenAIChatCompletionsModel
+    except ImportError:
+        return "Error: CAI SDK not found in this environment."
     import datetime
     import os
     import subprocess
@@ -109,8 +112,44 @@ async def cai_text(prompt: str) -> str:
         return f"Error invoking CAI SDK: {str(e)}"
 
 
+def generate_initial_report():
+    """Generates a default welcome report on startup."""
+    import datetime
+    report_path = "/home/caiuser/latest_cai_report.html"
+    html_template = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CAI Intelligence Report | Waiting</title>
+    <style>
+        body {{ font-family: 'Inter', -apple-system, sans-serif; background: #f8fafc; color: #1e293b; padding: 40px; line-height: 1.6; }}
+        .card {{ background: white; border-radius: 16px; padding: 40px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; max-width: 800px; margin: 0 auto; text-align: center; }}
+        h1 {{ color: #2563eb; margin-top: 0; font-weight: 800; letter-spacing: -0.025em; }}
+        .metadata {{ color: #64748b; font-size: 0.9rem; margin-bottom: 30px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; }}
+        .content {{ font-size: 1.1rem; color: #64748b; font-style: italic; }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Welcome to BugMentor CAI</h1>
+        <div class="metadata">Initialized: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | Status: Ready</div>
+        <div class="content">No intelligence has been gathered yet. Run your first <strong>cai_text</strong> prompt to generate a real-time report.</div>
+    </div>
+</body>
+</html>
+"""
+    try:
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(html_template)
+    except Exception:
+        pass
+
 if __name__ == "__main__":
     try:
+        # Generate initial placeholder report
+        generate_initial_report()
+        
         # Use HTTP transport when MCP_HTTP=1 (avoids stdio/docker exec issues on Windows)
         if os.environ.get("MCP_HTTP"):
             mcp.run(transport="http", host="0.0.0.0", port=8000, show_banner=False)

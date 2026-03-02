@@ -18,6 +18,9 @@ analysis_result.md
 security_report.html
 latest_cai_report.html
 *.log
+test_results.txt
+full_test_err.txt
+mcp_test_err.txt
 
 # Windows
 Thumbs.db

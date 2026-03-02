@@ -21,6 +21,6 @@ if docker cp "${CONTAINER_NAME}:${REMOTE_PATH}" "$LOCAL_PATH" 2>/dev/null; then
         echo -e "\033[0;33m[!] Browser opener not found. Please open $LOCAL_PATH manually.\033[0m"
     fi
 else
-    echo -e "\033[0;31m[!] Error: Could not fetch report from container.\033[0m"
-    echo -e "\033[0;33m[?] Make sure the container is running and you have executed at least one 'cai_text' prompt.\033[0m"
+    echo -e "\033[0;33m[!] Report not found in container yet.\033[0m"
+    echo -e "\033[0;36m[?] Ensure the container is running and you have sent at least one prompt.\033[0m"
 fi

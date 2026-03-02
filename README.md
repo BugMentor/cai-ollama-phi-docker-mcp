@@ -3,6 +3,7 @@
 This is a powerful, open-source **BugMentor project** that containerizes the CAI (Cybersecurity AI) agent with Ollama and the `phi` model. It provides both a generic security scanner for any project and a fully-featured MCP (Model Context Protocol) server with automated intelligence reporting.
 
 - **Developer**: Matías J. Magni, CEO @ [BugMentor](https://bugmentor.com)
+- **Original Framework**: Based on the [CAI (Cybersecurity AI) framework](https://github.com/aliasrobotics/cai) by Alias Robotics.
 - **License**: MIT
 
 ---
@@ -96,6 +97,8 @@ To see the beautifully formatted HTML report from your last MCP interaction:
 ./get_mcp_report.sh
 ```
 
+**Note**: A placeholder "Welcome" report is generated automatically on server startup. Send your first `cai_text` prompt to update it with real intelligence.
+
 ---
 
 ## 🧹 Project Structure
@@ -136,6 +139,30 @@ Need help implementing CAI or other BugMentor tools in your company? BugMentor o
 * **Custom AI Feature Development**
 
 [Contact us](https://bugmentor.com) for commercial inquiries.
+
+---
+
+## 🧪 Testing & Quality Assurance
+
+This project maintains **100% code and test coverage** to ensure reliable security auditing.
+
+### Running Tests
+The test suite is built with `pytest` and covers unit, integration, and E2E scenarios.
+
+**Windows (PowerShell):**
+```powershell
+$Env:PYTHONPATH = "."; pytest -v tests/
+```
+
+**Linux/macOS:**
+```bash
+export PYTHONPATH="."; pytest -v tests/
+```
+
+**Testing Levels:**
+- **Unit Tests**: Logic validation for `cai_scanner_core.py` and `cai_mcp_server.py`.
+- **Integration Tests**: Subprocess and file-system interaction validation for the scanner.
+- **E2E Smoke Tests**: Connectivity checks for the live MCP server.
 
 ---
 
